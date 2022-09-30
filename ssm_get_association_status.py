@@ -38,5 +38,6 @@ def main():
     for association in  ssm_get_association_status(fromProfile,instance)['InstanceAssociationStatusInfos']:
       print(f"Association name: {association['Name']} - Status: {association['Status']}")
     print('-' * 15)
+    
 if __name__ == '__main__':
   main()
