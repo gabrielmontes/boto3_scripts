@@ -3,6 +3,9 @@ import boto3
 import argparse
 import logging
 
+# Vars:
+# AD_URL
+
 def ws_get_directory() -> str:
   client = boto3.client("workspaces")
   paginator = client.get_paginator("describe_workspace_directories")
@@ -23,10 +26,7 @@ def ds_get_trusts(ID: str) -> str:
 def create_tags(site: str) -> list:
   return (
            [
-             {'Key': 'COST-CENTER', 'Value': 'SSL'}, \
-             {'Key': 'SITE', 'Value': site.upper()}, \
-             {'Key': 'OWNER', 'Value': 'IT-SERVICEDESK'}, \
-             {'Key': 'BUSINESS-AREA', 'Value': 'PRODUCT'}
+             {'Key': 'KEY', 'Value': 'VALUE'}, \
            ]
          )
   
@@ -63,9 +63,11 @@ def main():
   directoryId: str = ""
   ebsKey: str = "KEY"
   bundleId: str = "BUNDLE"
+    
   log = logging.getLogger()
   log.setLevel(logging.INFO)
   logging.basicConfig(format='%(asctime)s %(message)s ', datefmt='%Y-%m-%d %H:%M:%S')
+  
   boto3.setup_default_session(profile_name=args.profile, region_name=args.region)
 
   # Find directory id from the new account:
