@@ -1,3 +1,3 @@
 # boto3_scripts
-Scripts to handle infrastructure in aws.
-* Pending unit testing.
+My daily day scripts to handle infrastructure in aws.
+- Pending unit testing.
