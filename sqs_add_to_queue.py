@@ -31,10 +31,12 @@ def main():
 
     for row in datareader:
       count += 1
+      counter += 1
+      
       message = json.dumps({"event": "send_denied_notification_email", "payload": {"AAN": ast.literal_eval(row["template"]),"applicationId": row["application_id"]}})
       print(f"Sending message - {count}: {message}")
       #print(sqs_add_to_queue(args.url, json.loads(json.dumps(message))))
-      counter += 1
+      #need validation of adding to the queue: status = sqs_add_to_queue() ? continue : waiter
       
       if counter == args.lines:
         time.sleep(args.timer)
