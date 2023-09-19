@@ -21,3 +21,4 @@ PROMPT='%F{green}%n%f %F{blue}%~%f %F{red}${vcs_info_msg_0_}%f$ '
 alias bp='vim ~/.zshrc'
 alias sa='source ~/.zshrc;echo "ZSH aliases sourced."'
 alias awslogin="aws configure sso --profile state-manager"
+alias terragrunt-apply="terragrunt plan && terragrunt apply --auto-approve"
