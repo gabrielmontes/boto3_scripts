@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+
+usage(){
+ echo "Usage: $0 --ACCOUNT_UUID=ACCOUNT_UUID --RUNNER_UUID=RUNNER_UUID --REPOSITORY_UUID=REPOSITORY_UUID --OAUTH_CLIENT_ID=OAUTH_CLIENT_ID --OAUTH_CLIENT_SECRET=OAUTH_CLIENT_SECRET"
+ exit 1
+}
+
+[[ ! $# -gt 0 ]] && usage
+
+getopts(){
+  until [[ -z "$1" ]]; do
+    case "$1" in
+      --ACCOUNT_UUID=*)
+        export ACCOUNT_UUID="${1##*=}"
+        ;;
+      --RUNNER_UUID=*)
+        export RUNNER_UUID="${1##*=}"
+        ;;
+      --REPOSITORY_UUID=*)
+        export REPOSITORY_UUID="${1##*=}"
+        ;;
+      --OAUTH_CLIENT_ID=*)
+        export OAUTH_CLIENT_ID="${1##*=}"
+        ;;
+      --OAUTH_CLIENT_SECRET=*)
+        export OAUTH_CLIENT_SECRET="${1##*=}"
+        ;;
+      *)
+        usage
+        ;;
+    esac
+    shift
+  done
+}
+
+export_variables(){
+  export ACCOUNT_UUID=${ACCOUNT_UUID}
+  export RUNNER_UUID=${RUNNER_UUID}
+  export REPOSITORY_UUID=${REPOSITORY_UUID}
+  export OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+  export OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+  
+  export BASE64_OAUTH_CLIENT_ID=$(echo -n $OAUTH_CLIENT_ID | base64)
+  export BASE64_OAUTH_CLIENT_SECRET=$(echo -n $OAUTH_CLIENT_SECRET | base64)
+}
+
+create_deployment(){  
+  export_variables
+
+  cat > ./job.yaml <<EOF
+  apiVersion: v1
+  kind: List
+  items:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: runner-oauth-credentials
+        namespace: poc
+        labels:
+          accountUuid: ${ACCOUNT_UUID}
+          runnerUuid: ${RUNNER_UUID}
+          repositoryUuid: ${REPOSITORY_UUID}
+      data:
+        oauthClientId: ${BASE64_OAUTH_CLIENT_ID}
+        oauthClientSecret: ${BASE64_OAUTH_CLIENT_SECRET}
+    - apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: runner
+      spec:
+        template:
+          metadata:
+            labels:
+              accountUuid: ${ACCOUNT_UUID}
+              runnerUuid: ${RUNNER_UUID}
+              repositoryUuid: ${REPOSITORY_UUID}
+          spec:
+            containers:
+              - name: bitbucket-k8s-runner
+                image: docker-public.packages.atlassian.com/sox/atlassian/bitbucket-pipelines-runner
+                env:
+                  - name: ACCOUNT_UUID
+                    value: "{${ACCOUNT_UUID}}"
+                  - name: RUNNER_UUID
+                    value: "{${RUNNER_UUID}}"
+                  - name: REPOSITORY_UUID
+                    value: "{${REPOSITORY_UUID}}" 
+                  - name: OAUTH_CLIENT_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: runner-oauth-credentials
+                        key: oauthClientId
+                  - name: OAUTH_CLIENT_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: runner-oauth-credentials
+                        key: oauthClientSecret
+                  - name: WORKING_DIRECTORY
+                    value: "/tmp"
+                volumeMounts:
+                  - name: tmp
+                    mountPath: /tmp
+                  - name: docker-containers
+                    mountPath: /var/lib/docker/containers
+                    readOnly: true
+                  - name: var-run
+                    mountPath: /var/run
+              - name: docker-in-docker
+                image: docker:20.10.7-dind
+                securityContext:
+                  privileged: true
+                volumeMounts:
+                  - name: tmp
+                    mountPath: /tmp
+                  - name: docker-containers
+                    mountPath: /var/lib/docker/containers
+                  - name: var-run
+                    mountPath: /var/run
+            restartPolicy: OnFailure
+            volumes:
+              - name: tmp
+              - name: docker-containers
+              - name: var-run
+        backoffLimit: 6
+        completions: 1
+        parallelism: 1
+  EOF
+}
+
+main(){
+  getopts "$@" && create_deployment
+}
+
+main "$@"
